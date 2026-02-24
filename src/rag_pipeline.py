@@ -30,6 +30,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 TOP_K = 8
 MMR_FETCH_K = 30
 MMR_LAMBDA = 0.5
+SCORE_THRESHOLD = 0.5  # Lower is more similar (Cosine distance)
 
 
 
@@ -62,28 +63,23 @@ def load_vector_db():
 # ==============================
 
 def retrieve_documents(query: str, vectordb) -> List[Document]:
-    print("\n📚 Searching with MMR...")
-    # Query expansion/clarification placeholder
-    if len(query.strip().split()) < 4:
-        # For short queries, expand using LLM or prompt user (placeholder)
-        print("⚠ Query is short or vague. Consider expanding or clarifying.")
-        # Optionally, call LLM to rewrite query here
+    print(f"\n📚 Searching with MMR (Threshold: {SCORE_THRESHOLD})...")
+    
+    # Step 1 — Get similarity scores for filtering
+    # In ChromaDB with Cosine distance: 0.0 is exact match, 1.0 is opposite.
+    # Score lookup for the top K documents
+    scored_docs = vectordb.similarity_search_with_score(query, k=MMR_FETCH_K)
+    
+    # Create score lookup
+    score_lookup = {doc.page_content[:200]: score for doc, score in scored_docs}
 
-    # Step 1 — Get diverse documents (MMR)
+    # Step 2 — Get diverse documents (MMR)
     mmr_docs = vectordb.max_marginal_relevance_search(
         query,
         k=TOP_K,
         fetch_k=MMR_FETCH_K,
         lambda_mult=MMR_LAMBDA
     )
-
-    # Step 2 — Get similarity scores separately
-    scored_docs = vectordb.similarity_search_with_score(query, k=TOP_K)
-
-    # Create score lookup
-    score_lookup = {}
-    for doc, score in scored_docs:
-        score_lookup[doc.page_content[:200]] = score
 
     print("\n🔎 Retrieval Transparency Report")
     print("-" * 60)
@@ -95,14 +91,23 @@ def retrieve_documents(query: str, vectordb) -> List[Document]:
         key = doc.page_content[:200]
         if key in seen:
             continue
+        
+        score = score_lookup.get(key, 1.0)
+        
+        # Only include if it meets our quality threshold (score <= 0.5)
+        if score > SCORE_THRESHOLD:
+            continue
+
         seen.add(key)
-        score = score_lookup.get(key, "N/A")
         source = doc.metadata.get("source", "Unknown")
-        print(f"[{i}] Score: {score} | Source: {source}")
+        print(f"[{len(final_docs)+1}] Score: {score:.4f} | Source: {source}")
         print(f"     Preview: {doc.page_content[:120]}...\n")
         final_docs.append(doc)
 
     print("-" * 60)
+
+    if not final_docs:
+        print("❌ No documents matched the relevance threshold.")
 
     return final_docs
 
@@ -113,23 +118,26 @@ def retrieve_documents(query: str, vectordb) -> List[Document]:
 
 def get_prompt():
     template = """
-You are a clinical AI assistant.
+You are a Senior Clinical AI Assistant. Your goal is to provide a high-precision, safety-first answer based EXCLUSIVELY on the provided context.
 
-Strict Rules:
-1. Use ONLY the provided sources below.
-2. After EVERY factual claim, cite like this: [Source X]
-3. If information is missing, write: Not in guidelines.
-4. Do NOT invent, infer, summarize, or add any information not explicitly present in the context. If unsure, say 'Not in guidelines.'
-5. Every sentence MUST be followed by a citation. If you cannot cite, do not include the sentence.
+### SYSTEM RULES:
+1. **Acronym Definition**: At the first mention of any medical acronym (e.g., ABA, CRP, MRI), define it in parentheses.
+2. **Handle Exceptions**: If the context mentions specific pathogens, age groups, or conditions that have DIFFERENT rules (e.g., Brucella requiring longer treatment), you MUST include these exceptions. Do not "cherry-pick" only the general rule.
+3. **Evidence Strength**: If the context labels a recommendation as "strong", "conditional", "weak", or "high/low quality evidence", you MUST include that detail (e.g., "It is conditionally suggested that...").
+4. **Synthesis**: Synthesize information from MULTIPLE sources. If Source 1 and Source 2 discuss the same topic, combine their insights rather than relying on just one.
+5. **No Hallucinations**: If the information is not explicitly in the provided sources, state "Information not found in guidelines."
+6. **Strict Citation**: Every single factual claim must be followed by its source in brackets, e.g., [Source 1]. Do not group citations at the end of a paragraph.
 
-Context:
+### CONTEXT:
 {context}
 
-Question:
+### USER QUESTION:
 {question}
 
-Instructions:
-Answer ONLY the user's question directly. Do NOT include definitions, criteria, or management sections unless specifically asked. Do NOT add any extra sections or information not requested by the user.
+### RESPONSE FORMAT:
+- Provide a professional, clinical synthesis.
+- Use a single coherent response (no forced headers).
+- Ensure safety warnings and specific clinical exceptions are prominent.
 """
     return ChatPromptTemplate.from_template(template)
 
@@ -140,7 +148,7 @@ Answer ONLY the user's question directly. Do NOT include definitions, criteria, 
 
 def generate_answer(question: str, context: str):
     llm = ChatGroq(
-        temperature=0.1,
+        temperature=0.0, # Zero temperature for clinical consistency
         model=GROQ_MODEL
     )
     prompt = get_prompt()
@@ -149,15 +157,30 @@ def generate_answer(question: str, context: str):
         "context": context,
         "question": question
     })
-    # Post-process: Remove any sentence not followed by a citation
-    import re
+    
     answer = response.content
-    # Split into sentences (simple split, can be improved)
+    
+    # Senior Engineering Post-Processing: 
+    # Check for citations but allow for headers if the LLM reasonably included them
+    # We maintain the citation pattern check to ensure every line is grounded.
+    import re
     sentences = re.split(r'(?<=[.!?])\s+', answer)
-    filtered = [s for s in sentences if re.search(CITATION_PATTERN, s)]
-    # Remove section headers unless specifically asked
-    # Only keep cited sentences
-    final = list(dict.fromkeys(filtered))
+    
+    # We only keep sentences that have a citation or are defining the context.
+    # To be safe in clinical RAG, we stick to the cited sentences.
+    filtered = []
+    for s in sentences:
+        if re.search(CITATION_PATTERN, s) or "Information not found" in s:
+            filtered.append(s)
+            
+    # Remove duplicates while preserving order
+    final = []
+    seen = set()
+    for s in filtered:
+        if s not in seen:
+            final.append(s)
+            seen.add(s)
+            
     return '\n'.join(final)
 
 
@@ -176,17 +199,6 @@ CITATION_PATTERN = r"\[Source\s+\d+\]"
 def validate_answer(answer: str):
     print("\n📋 Validation Report")
     print("-" * 40)
-
-    # Check structure
-    missing_sections = []
-    for pattern in REQUIRED_SECTIONS:
-        if not re.search(pattern, answer):
-            missing_sections.append(pattern)
-
-    if missing_sections:
-        print("⚠ Missing Sections:", missing_sections)
-    else:
-        print("✅ All required sections present")
 
     # Check citations
     citations = re.findall(CITATION_PATTERN, answer)
