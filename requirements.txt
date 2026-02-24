@@ -21,3 +21,6 @@ numpy
 # If you need FAISS for local ANN search (optional, ChromaDB covers it)
 # faiss-cpu
 rank_bm25
+google-generativeai
+openai
+

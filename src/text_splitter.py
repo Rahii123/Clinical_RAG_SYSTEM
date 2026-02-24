@@ -181,9 +181,21 @@ class CustomTextSplitter(RecursiveCharacterTextSplitter):
             merged_chunks.append(buffer)
         return merged_chunks
 
+def clean_text(text):
+    # Remove page numbers (e.g., '115', 'Page 12', etc.)
+    text = re.sub(r"\bPage\s*\d+\b", "", text)
+    text = re.sub(r"\b\d{1,3}\b", lambda m: "" if len(m.group(0)) < 4 else m.group(0), text)
+    # Remove citation indices like [1], [23], (1), (23)
+    text = re.sub(r"\[\d{1,3}\]", "", text)
+    text = re.sub(r"\(\d{1,3}\)", "", text)
+    # Remove excessive whitespace
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"\s{3,}", "  ", text)
+    return text
+
 text_splitter = CustomTextSplitter(
-    chunk_size=1000,  # increased chunk size
-    chunk_overlap=180,  # increased overlap
+    chunk_size=1600,  # ~400 tokens
+    chunk_overlap=320,  # ~80 tokens
     separators=["\n\n", "\n", ". ", " "],
 )
 
@@ -238,8 +250,11 @@ for filename in sorted(os.listdir(INPUT_FOLDER)):
         else:
             section_type = "general"
 
+
+        # Clean section body before chunking
+        cleaned_body = clean_text(section_body)
         # Prepend the section header to every sub-chunk for context
-        prefixed_body = f"[Section: {section_header}]\n{section_body}"
+        prefixed_body = f"[Section: {section_header}]\n{cleaned_body}"
         sub_chunks    = text_splitter.split_text(prefixed_body)
 
         for sub_chunk in sub_chunks:

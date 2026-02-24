@@ -1,15 +1,20 @@
+import os
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+try:
+    from src.embeddings import OpenAIEmbeddingFunction
+except ImportError:
+    from embeddings import OpenAIEmbeddingFunction
 
 # ==========================================
 # CHROMA SETUP
 # ==========================================
 
-client = chromadb.HttpClient(host='localhost', port=8000)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PERSIST_DIRECTORY = os.path.join(BASE_DIR, ".vector_store")
 
-embedding_function = SentenceTransformerEmbeddingFunction(
-    model_name="all-MiniLM-L6-v2"
-)
+client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
+
+embedding_function = OpenAIEmbeddingFunction()
 
 collection = client.get_collection(
     name="clinical_guidelines",

@@ -5,11 +5,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+import requests
+
 from langchain_groq import ChatGroq
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 
+
+try:
+    from src.embeddings import OpenAIEmbeddingFunction
+except ImportError:
+    from embeddings import OpenAIEmbeddingFunction
+
+embeddings = OpenAIEmbeddingFunction()
 # ==============================
 # CONFIG
 # ==============================
@@ -17,7 +25,6 @@ from langchain_core.prompts import ChatPromptTemplate
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PERSIST_DIRECTORY = os.path.join(BASE_DIR, ".vector_store")
 
-EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 TOP_K = 8
@@ -25,16 +32,7 @@ MMR_FETCH_K = 30
 MMR_LAMBDA = 0.5
 
 
-# ==============================
-# EMBEDDINGS
-# ==============================
 
-def init_embeddings():
-    return HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"normalize_embeddings": True}
-    )
 
 
 # ==============================
@@ -42,7 +40,6 @@ def init_embeddings():
 # ==============================
 
 def load_vector_db():
-    embeddings = init_embeddings()
 
     vectordb = Chroma(
         persist_directory=PERSIST_DIRECTORY,
@@ -66,6 +63,11 @@ def load_vector_db():
 
 def retrieve_documents(query: str, vectordb) -> List[Document]:
     print("\n📚 Searching with MMR...")
+    # Query expansion/clarification placeholder
+    if len(query.strip().split()) < 4:
+        # For short queries, expand using LLM or prompt user (placeholder)
+        print("⚠ Query is short or vague. Consider expanding or clarifying.")
+        # Optionally, call LLM to rewrite query here
 
     # Step 1 — Get diverse documents (MMR)
     mmr_docs = vectordb.max_marginal_relevance_search(
@@ -91,17 +93,13 @@ def retrieve_documents(query: str, vectordb) -> List[Document]:
 
     for i, doc in enumerate(mmr_docs, 1):
         key = doc.page_content[:200]
-
         if key in seen:
             continue
         seen.add(key)
-
         score = score_lookup.get(key, "N/A")
         source = doc.metadata.get("source", "Unknown")
-
         print(f"[{i}] Score: {score} | Source: {source}")
         print(f"     Preview: {doc.page_content[:120]}...\n")
-
         final_docs.append(doc)
 
     print("-" * 60)
@@ -118,10 +116,11 @@ def get_prompt():
 You are a clinical AI assistant.
 
 Strict Rules:
-1. Use ONLY the provided sources.
+1. Use ONLY the provided sources below.
 2. After EVERY factual claim, cite like this: [Source X]
 3. If information is missing, write: Not in guidelines.
-4. Do NOT invent information.
+4. Do NOT invent, infer, summarize, or add any information not explicitly present in the context. If unsure, say 'Not in guidelines.'
+5. Every sentence MUST be followed by a citation. If you cannot cite, do not include the sentence.
 
 Context:
 {context}
@@ -129,16 +128,8 @@ Context:
 Question:
 {question}
 
-Answer Format:
-
-**Definition**:
-...
-
-**Criteria**:
-...
-
-**Management**:
-...
+Instructions:
+Answer ONLY the user's question directly. Do NOT include definitions, criteria, or management sections unless specifically asked. Do NOT add any extra sections or information not requested by the user.
 """
     return ChatPromptTemplate.from_template(template)
 
@@ -152,15 +143,22 @@ def generate_answer(question: str, context: str):
         temperature=0.1,
         model=GROQ_MODEL
     )
-
     prompt = get_prompt()
     chain = prompt | llm
     response = chain.invoke({
         "context": context,
         "question": question
     })
-
-    return response.content
+    # Post-process: Remove any sentence not followed by a citation
+    import re
+    answer = response.content
+    # Split into sentences (simple split, can be improved)
+    sentences = re.split(r'(?<=[.!?])\s+', answer)
+    filtered = [s for s in sentences if re.search(CITATION_PATTERN, s)]
+    # Remove section headers unless specifically asked
+    # Only keep cited sentences
+    final = list(dict.fromkeys(filtered))
+    return '\n'.join(final)
 
 
 # ==============================
@@ -201,21 +199,17 @@ def validate_answer(answer: str):
     print("-" * 40)
 def build_context(docs: List[Document]) -> str:
     parts = []
-
     for i, doc in enumerate(docs, 1):
-        source = doc.metadata.get("source", f"Source-{i}")
         content = doc.page_content.strip()
-
         # Safety truncation (avoid token explosion)
         if len(content) > 1200:
             content = content[:1200] + "\n...[truncated]"
-
+        # Only [Source {i}] to match validation regex
         parts.append(
-            f"[Source {i}: {source}]\n"
+            f"[Source {i}]\n"
             f"{content}\n"
             f"{'─'*70}"
         )
-
     return "\n\n".join(parts)
 
 
