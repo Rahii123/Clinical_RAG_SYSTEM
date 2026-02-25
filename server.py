@@ -13,6 +13,7 @@ from src.rag_pipeline import (
     build_context, 
     generate_answer, 
     verify_citations,
+    contextualize_query,
     CITATION_PATTERN
 )
 

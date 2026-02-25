@@ -99,6 +99,8 @@ body {
     display: flex;
     flex-direction: column;
     background: #f8fafc;
+    height: 100vh;
+    min-width: 0;
 }
 
 .top-nav {
@@ -109,15 +111,20 @@ body {
     justify-content: space-between;
     padding: 0 32px;
     background: #fff;
+    flex-shrink: 0;
 }
 
 .chat-area {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
+    overflow-x: hidden;
     padding: 32px;
     display: flex;
     flex-direction: column;
     gap: 24px;
+    scroll-behavior: smooth;
+    height: calc(100vh - 180px);
+    /* Constrain height to force scroll */
 }
 
 .message {

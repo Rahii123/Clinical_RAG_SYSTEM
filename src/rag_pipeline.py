@@ -261,7 +261,8 @@ def verify_citations(answer: str, context: str):
 def generate_answer(question: str, context: str, docs: List[Document] = None):
     llm = ChatGroq(
         temperature=0.0, 
-        model=GROQ_MODEL
+        model=GROQ_MODEL,
+        max_tokens=4096  # Increased to prevent truncation of long responses
     )
     prompt = get_prompt()
     chain = prompt | llm
