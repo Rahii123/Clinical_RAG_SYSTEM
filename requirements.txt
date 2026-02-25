@@ -23,4 +23,5 @@ numpy
 rank_bm25
 google-generativeai
 openai
+flashrank
 

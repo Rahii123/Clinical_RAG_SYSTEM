@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical RAG v2.0 | Medical Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Session Info & History -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i data-lucide="stethoscope"></i>
+                <span>Clinical<strong>RAG</strong></span>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-item">
+                    <span class="label">Engine</span>
+                    <span class="value">Llama 3.3 70B</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Embeddings</span>
+                    <span class="value">OpenAI v3</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Status</span>
+                    <span class="value online">Ready</span>
+                </div>
+            </div>
+
+            <nav class="history">
+                <p class="section-title">Recent Queries</p>
+                <div class="history-item active">Diabetes Mellitus therapy</div>
+                <div class="history-item">Hypertensive emergencies</div>
+                <div class="history-item">Pathogen-specific info</div>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <header class="top-nav">
+                <div class="breadcrumb">Workspace / Synthesis / <strong>New Query</strong></div>
+                <div class="user-profile">
+                    <span>Dr. Raghav</span>
+                    <div class="avatar">DA</div>
+                </div>
+            </header>
+
+            <div class="chat-area" id="chat-area">
+                <!-- Initial Welcome message -->
+                <div class="message system">
+                    <div class="msg-content">
+                        <h2>Welcome to Clinical RAG v2.0</h2>
+                        <p>Search over 3,000+ clinical guideline chunks with semantic reranking and NLI validation.</p>
+                        <div class="quick-tags">
+                            <span onclick="setQuery('Diagnosis of T2DM')">#T2DM Diagnosis</span>
+                            <span onclick="setQuery('Hypertension management in elderly')">#Hypertension Elderly</span>
+                            <span onclick="setQuery('Antibiotic-resistant infections')">#Antibiotics</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <input type="text" id="user-input" placeholder="Ask a clinical question..." autocomplete="off">
+                    <button id="send-btn" class="send-btn">
+                        <i data-lucide="send"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel: Evidence & Validation -->
+        <aside class="evidence-panel">
+            <div class="panel-header">
+                <i data-lucide="database"></i>
+                <h3>Evidence Room</h3>
+            </div>
+            
+            <div class="evidence-content">
+                <div class="validation-box unverified" id="validation-box">
+                    <div class="v-header">
+                        <i data-lucide="shield-check"></i>
+                        <span>NLI Grounding Status</span>
+                    </div>
+                    <p id="v-text">Waiting for query...</p>
+                </div>
+
+                <div class="sources-list" id="sources-list">
+                    <p class="empty-state">Retrieved citations will appear here.</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+    <script src="app.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
