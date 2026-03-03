@@ -44,6 +44,7 @@ class SourceMetadata(BaseModel):
     title: str
     section: str
     year: int
+    content: str  # Added to allow the UI to show the raw evidence
 
 class QueryResponse(BaseModel):
     answer: str
@@ -100,7 +101,8 @@ async def process_query(request: QueryRequest):
             id=i,
             title=doc.metadata.get("guideline_name") or "Unknown Guideline",
             section=doc.metadata.get("section_header") or "General",
-            year=int(doc.metadata.get("year", 0))
+            year=int(doc.metadata.get("year", 0)),
+            content=doc.page_content.strip() # Pass the original evidence to the UI
         ))
 
     return QueryResponse(

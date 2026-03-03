@@ -4,6 +4,12 @@ const sendBtn = document.getElementById('send-btn');
 const sourcesList = document.getElementById('sources-list');
 const validationBox = document.getElementById('validation-box');
 const vText = document.getElementById('v-text');
+const sourceModal = document.getElementById('source-modal');
+const modalBody = document.getElementById('modal-body');
+const closeModal = document.querySelector('.close-modal');
+
+// Global store for the latest query's sources to enable clicks
+let currentSources = [];
 
 // Maintain a session ID for multi-user/conversational memory
 const sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
@@ -29,12 +35,16 @@ async function callRAGApi(query) {
         if (!response.ok) throw new Error('API Failure');
 
         const data = await response.json();
+        currentSources = data.sources; // Save sources for citation clicking
 
         // 3. Update Bot Message
         botMsgContainer.innerHTML = formatMarkdown(data.answer);
 
         // 4. Update Side Panel
         updateEvidence(data);
+
+        // Auto-scroll to show citations
+        chatArea.scrollTop = chatArea.scrollHeight;
 
     } catch (error) {
         console.error(error);
@@ -64,14 +74,10 @@ function updateEvidence(data) {
 
     // Update Sources
     sourcesList.innerHTML = '<p class="section-title">Verified Sources</p>';
-    if (data.sources.length === 0) {
-        sourcesList.innerHTML += '<p class="empty-state">No sources retrieved.</p>';
-        return;
-    }
-
     data.sources.forEach(s => {
         const card = document.createElement('div');
         card.className = 'source-card';
+        card.onclick = () => showSource(s.id);
         card.innerHTML = `
             <span class="s-id">[Source ${s.id}]</span>
             <span class="s-title">${s.title}</span>
@@ -79,6 +85,14 @@ function updateEvidence(data) {
         `;
         sourcesList.appendChild(card);
     });
+}
+
+function showSource(id) {
+    const source = currentSources.find(s => s.id === id);
+    if (source) {
+        modalBody.innerText = source.content;
+        sourceModal.style.display = 'block';
+    }
 }
 
 function formatMarkdown(text) {
@@ -100,7 +114,9 @@ function formatMarkdown(text) {
         .replace(/\n\n/g, '<br><br>')
         .replace(/\n/g, '<br>')
         // Citations
-        .replace(/\[Source\s+(\d+)\]/g, '<span class="citation-tag">[$1]</span>');
+        .replace(/\[Source\s+(\d+)\]/g, (match, id) => {
+            return `<span class="citation-tag" onclick="showSource(${parseInt(id)})">[${id}]</span>`;
+        });
 }
 
 function setQuery(query) {
@@ -115,3 +131,6 @@ sendBtn.addEventListener('click', () => {
 userInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && userInput.value.trim()) callRAGApi(userInput.value);
 });
+
+closeModal.onclick = () => sourceModal.style.display = 'none';
+window.onclick = (e) => { if (e.target == sourceModal) sourceModal.style.display = 'none'; }

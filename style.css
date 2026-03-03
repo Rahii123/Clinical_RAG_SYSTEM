@@ -314,6 +314,7 @@ body {
     word-break: break-word;
 }
 
+/* Citations & Modals */
 .citation-tag {
     background: #dbeafe;
     color: var(--clinical-blue);
@@ -322,6 +323,81 @@ body {
     font-size: 0.8rem;
     font-weight: 600;
     margin: 0 2px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.citation-tag:hover {
+    background: var(--clinical-blue);
+    color: #fff;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: #fff;
+    margin: 10% auto;
+    padding: 32px;
+    border-radius: 16px;
+    width: 50%;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+}
+
+.close-modal {
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.modal-body {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+    white-space: pre-line;
+}
+
+.source-card {
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.source-card:hover {
+    border-color: var(--clinical-blue);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Typing Indicator */
