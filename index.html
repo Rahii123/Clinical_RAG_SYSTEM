@@ -104,15 +104,15 @@
         </aside>
     </div>
 
-    <!-- Source Viewer (Interactive Evidence) -->
-    <div id="source-modal" class="modal">
+    <!-- Source Preview Modal -->
+    <div id="source-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Guideline Evidence Snippet</h3>
-                <span class="close-modal">&times;</span>
+                <h4 id="modal-source-title">Source Preview</h4>
+                <button onclick="closeModal()" class="close-btn"><i data-lucide="x"></i></button>
             </div>
             <div id="modal-body" class="modal-body">
-                <!-- Source content goes here -->
+                <!-- Source text goes here -->
             </div>
         </div>
     </div>
