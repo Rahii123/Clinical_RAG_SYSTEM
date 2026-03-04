@@ -23,7 +23,7 @@ embeddings = OpenAIEmbeddingFunction()
 # ==============================
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PERSIST_DIRECTORY = os.path.join(BASE_DIR, ".vector_store")
+PERSIST_DIRECTORY = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, ".vector_store"))
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
