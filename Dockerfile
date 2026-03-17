@@ -20,12 +20,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port FastAPI will run on
-EXPOSE 10000
+# Expose the port HF will run on
+EXPOSE 7860
 
 # Set environment variables
 ENV HOST=0.0.0.0
-ENV PORT=10000
+ENV PORT=7860
 
 # Command to run the application
-CMD ["uvicorn", "server.py:app", "--host", "0.0.0.0", "--port", "10000"]
+CMD ["python", "server.py"]
