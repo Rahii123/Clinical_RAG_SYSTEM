@@ -124,5 +124,5 @@ async def process_query(request: QueryRequest):
 if __name__ == "__main__":
     import uvicorn
     # Render provides the PORT via environment variable
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 7860))
     uvicorn.run(app, host="0.0.0.0", port=port)
