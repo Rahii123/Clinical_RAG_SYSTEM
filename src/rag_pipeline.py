@@ -13,11 +13,20 @@ from langchain_core.prompts import ChatPromptTemplate
 
 
 try:
-    from src.embeddings import OpenAIEmbeddingFunction
+    from src.embeddings import OpenAIEmbeddingFunction, GeminiEmbeddingFunction
 except ImportError:
-    from embeddings import OpenAIEmbeddingFunction
+    from embeddings import OpenAIEmbeddingFunction, GeminiEmbeddingFunction
 
-embeddings = OpenAIEmbeddingFunction()
+if os.getenv("OPENAI_API_KEY"):
+    print("🔹 Using OpenAI Embeddings")
+    embeddings = OpenAIEmbeddingFunction()
+elif os.getenv("GEMINI_API_KEY"):
+    print("🔹 Using Gemini Embeddings (Fallback)")
+    embeddings = GeminiEmbeddingFunction()
+else:
+    print("⚠️ WARNING: No valid OpenAI or Gemini API keys found. Vector search may fail.")
+    embeddings = None
+
 # ==============================
 # CONFIG
 # ==============================

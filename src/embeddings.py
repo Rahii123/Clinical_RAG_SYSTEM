@@ -20,7 +20,10 @@ class OpenAIEmbeddingFunction:
         self.model = model
         try:
             from openai import OpenAI
-            self.client = OpenAI(api_key=OPENAI_API_KEY)
+            if OPENAI_API_KEY:
+                self.client = OpenAI(api_key=OPENAI_API_KEY)
+            else:
+                self.client = None
         except ImportError:
             self.client = None
 
