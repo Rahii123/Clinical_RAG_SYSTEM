@@ -15,9 +15,9 @@ import chromadb
 from dotenv import load_dotenv
 
 try:
-    from src.embeddings import OpenAIEmbeddingFunction
+    from src.embeddings import get_embedding_function
 except ImportError:
-    from embeddings import OpenAIEmbeddingFunction
+    from embeddings import get_embedding_function
 
 ENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path=ENV_PATH, override=True)
@@ -38,7 +38,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PERSIST_DIRECTORY = os.path.join(BASE_DIR, ".vector_store")
 
 client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
-embedding_function = OpenAIEmbeddingFunction()
+embedding_function = get_embedding_function()
 
 RESET = "--reset" in sys.argv
 if RESET:

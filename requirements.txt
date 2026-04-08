@@ -2,11 +2,11 @@ fastapi
 uvicorn
 python-dotenv
 langchain
-langchain-chroma
+langchain-qdrant
 langchain-groq
 langchain-openai
 langchain-text-splitters
-chromadb
+qdrant-client
 flashrank
 ragas
 datasets
@@ -14,3 +14,5 @@ sentence-transformers
 pydantic
 pydantic-settings
 requests
+google-generativeai
+langchain-google-genai

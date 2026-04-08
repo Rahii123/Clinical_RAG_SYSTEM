@@ -4,7 +4,8 @@ from typing import List
 from dotenv import load_dotenv
 load_dotenv()
 
-from langchain_chroma import Chroma
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
 import requests
 
 from langchain_groq import ChatGroq
@@ -13,30 +14,28 @@ from langchain_core.prompts import ChatPromptTemplate
 
 
 try:
-    from src.embeddings import OpenAIEmbeddingFunction, GeminiEmbeddingFunction
+    from src.embeddings import get_embedding_function
 except ImportError:
-    from embeddings import OpenAIEmbeddingFunction, GeminiEmbeddingFunction
+    from embeddings import get_embedding_function
 
-if os.getenv("OPENAI_API_KEY"):
-    print("🔹 Using OpenAI Embeddings")
-    embeddings = OpenAIEmbeddingFunction()
-elif os.getenv("GEMINI_API_KEY"):
-    print("🔹 Using Gemini Embeddings (Fallback)")
-    embeddings = GeminiEmbeddingFunction()
-else:
-    print("⚠️ WARNING: No valid OpenAI or Gemini API keys found. Vector search may fail.")
-    embeddings = None
+ENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+if not os.path.exists(ENV_PATH):
+    ENV_PATH = os.path.abspath(".env")
+load_dotenv(dotenv_path=ENV_PATH, override=True)
+
+embeddings = get_embedding_function()
 
 # ==============================
 # CONFIG
 # ==============================
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PERSIST_DIRECTORY = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, ".vector_store"))
+QDRANT_STORAGE_PATH = os.path.join(BASE_DIR, "qdrant_storage")
+COLLECTION_NAME = "clinical_rag_v1"
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-TOP_K = 8
+TOP_K = 12
 MMR_FETCH_K = 30
 MMR_LAMBDA = 0.4
 SCORE_THRESHOLD = 0.3 # Lower is more similar (Cosine distance)
@@ -50,18 +49,25 @@ SCORE_THRESHOLD = 0.3 # Lower is more similar (Cosine distance)
 # ==============================
 
 def load_vector_db():
-
-    vectordb = Chroma(
-        persist_directory=PERSIST_DIRECTORY,
-        embedding_function=embeddings,
-        collection_name="clinical_guidelines"
+    client = QdrantClient(path=QDRANT_STORAGE_PATH)
+    
+    vectordb = QdrantVectorStore(
+        client=client,
+        collection_name=COLLECTION_NAME,
+        embedding=embeddings
     )
 
-    count = vectordb._collection.count()
-    print(f"\n📊 Collection: clinical_guidelines | Chunks: {count}")
+    try:
+        # Check if collection exists and has points
+        collection_info = client.get_collection(COLLECTION_NAME)
+        count = collection_info.points_count
+        print(f"\n📊 Collection: {COLLECTION_NAME} | Chunks: {count}")
+    except Exception:
+        print(f"❌ Collection {COLLECTION_NAME} not found.")
+        return None
 
     if count == 0:
-        print("❌ Vector store empty. Run chroma_store.py")
+        print("❌ Vector store empty. Run qdrant_store.py")
         return None
 
     return vectordb
